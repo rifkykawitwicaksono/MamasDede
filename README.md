@@ -10,14 +10,17 @@ Aplikasi pencatat keuangan pribadi bertema pastel dengan maskot panda dan beruan
 - Budget per kategori dengan progress bar dan peringatan visual.
 - Grafik distribusi pengeluaran dan perbandingan pemasukan/pengeluaran.
 - Wallpaper preset atau unggahan gambar, pengaturan blur dan overlay.
-- Penyimpanan lokal melalui `localStorage`; tidak memerlukan akun/server.
-- PWA dengan manifest dan service worker untuk akses offline.
+- Sinkronisasi cloud antarperangkat melalui Supabase Auth, tabel bersama, dan Realtime.
+- Wallpaper tetap tersimpan lokal di masing-masing perangkat.
+- PWA dengan manifest dan service worker untuk cache antarmuka; perubahan keuangan memerlukan internet untuk sinkronisasi.
 
 ## File proyek
 
 - `index.html` — struktur aplikasi.
 - `style.css` — desain responsif dan tema.
-- `script.js` — logika transaksi, grafik, budget, dan wallpaper.
+- `script.js` — logika transaksi, grafik, budget, wallpaper, login, dan sinkronisasi.
+- `config.js` — URL dan publishable/anon key Supabase.
+- `supabase-schema.sql` — skema tabel, kebijakan akses, dan pengaturan Realtime.
 - `manifest.json` — konfigurasi instalasi PWA.
 - `sw.js` — cache aset dan fallback offline.
 - `icon.svg` — ikon aplikasi yang digunakan manifest.
@@ -50,15 +53,24 @@ Aplikasi pencatat keuangan pribadi bertema pastel dengan maskot panda dan beruan
 3. Pilih **Add to Home Screen**.
 4. Ubah nama jika perlu, lalu tekan **Add**.
 
-## Penggunaan offline dan batasan penting
+## Mengaktifkan sinkronisasi antarperangkat
 
-- Transaksi, budget, dan wallpaper tersimpan di `localStorage` pada browser/perangkat yang sedang digunakan. Data tidak otomatis tersinkron antarperangkat dan dapat hilang jika data situs/browser dihapus. Ekspor CSV secara berkala sebagai cadangan.
-- Service worker meng-cache aset lokal dan mencoba menyimpan Chart.js dari CDN. Untuk memastikan cache awal terisi, buka aplikasi sekali ketika online sebelum memutus koneksi.
-- Jika Chart.js belum berhasil di-cache, fitur transaksi dan budget tetap dapat digunakan offline, tetapi grafik mungkin tidak tersedia sampai koneksi kembali.
-- Font Google bersifat eksternal dan bisa tidak tersedia offline; browser akan menggunakan font fallback.
-- Wallpaper yang diunggah disimpan di browser. Gambar besar dapat memenuhi kuota penyimpanan; gunakan gambar kecil.
-- Angka keuangan disimpan lokal di perangkat, bukan dienkripsi khusus oleh aplikasi. Gunakan kunci layar perangkat dan jangan gunakan perangkat bersama untuk data sensitif.
-- Ini aplikasi pencatatan sederhana, bukan layanan perbankan atau nasihat keuangan.
+1. Buat proyek baru di [Supabase](https://supabase.com/dashboard).
+2. Buka `config.js`. Isi `url` dengan Project URL dan `anonKey` dengan publishable key (atau anon key lama) dari Supabase Project Settings → API Keys. Jangan pernah memasukkan `service_role`/secret key ke file frontend.
+3. Di Supabase, buka SQL Editor → New query. Salin seluruh isi `supabase-schema.sql`, lalu tekan Run.
+4. Di Authentication settings, nonaktifkan public sign-ups. Buat dua akun email/password secara manual di Authentication → Users (atau gunakan fitur invite/create user yang tersedia). Berikan kredensial masing-masing kepada dua pengguna secara privat. Jangan menaruh password di repositori.
+5. Pastikan Realtime untuk tabel `public.shared_finance` aktif. SQL mencoba menambahkan tabel ke publikasi `supabase_realtime`; periksa Database → Publications jika event realtime belum diterima.
+6. Unggah semua file proyek ke root repositori GitHub Pages, termasuk `config.js` dan `supabase-schema.sql`. Commit perubahan dan tunggu deployment selesai.
+7. Buka URL GitHub Pages di perangkat pertama dan login. Jika belum ada data cloud, data lokal perangkat pertama akan digunakan untuk menginisialisasi ruang bersama. Perangkat kedua login dengan akun kedua; data cloud yang sama akan ditampilkan.
+
+## Sinkronisasi dan keamanan
+
+- Pemasukan, pengeluaran, dan budget kategori disimpan di satu ruang data bersama sehingga kedua perangkat melihat catatan yang sama dan perubahan normal tersinkron secara realtime.
+- Akun harus dibuat manual dan public sign-ups harus tetap nonaktif. Kebijakan SQL mengizinkan pengguna yang sudah login; karena itu jangan membuat akun tambahan selain dua akun yang dimaksud.
+- `config.js` memuat publishable/anon key yang memang digunakan oleh frontend. Keamanan bergantung pada autentikasi dan Row Level Security (RLS); jangan menonaktifkan RLS atau menambahkan secret/service-role key ke frontend.
+- Data yang sudah ada di cloud akan menggantikan data lokal saat login. Jika cloud belum memiliki catatan, data lokal perangkat pertama akan menjadi data awal bersama. Ekspor CSV sebelum migrasi sebagai cadangan jika ada data penting.
+- Sinkronisasi membutuhkan internet. PWA dapat membuka antarmuka yang tersimpan di cache saat offline, tetapi perubahan offline tidak dijamin akan digabung otomatis dengan perangkat lain. Hindari mengedit data dari dua perangkat secara bersamaan saat koneksi terputus.
+- Wallpaper tetap lokal di perangkat masing-masing. Aplikasi ini bukan layanan perbankan; gunakan kata sandi kuat dan jangan berbagi kredensial di chat publik.
 
 ## Pengembangan lokal
 

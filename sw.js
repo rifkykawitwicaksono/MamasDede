@@ -1,11 +1,12 @@
 /* Bubu & Dudu PWA service worker */
 "use strict";
-const CACHE_NAME = "bubu-dudu-shell-v1";
+const CACHE_NAME = "bubu-dudu-shell-v2";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./style.css",
   "./script.js",
+  "./config.js",
   "./manifest.json",
   "./icon.svg"
 ];

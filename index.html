@@ -13,19 +13,37 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" defer></script>
+  <script src="./config.js" defer></script>
   <script src="./script.js" defer></script>
 </head>
 <body>
   <div class="wallpaper-layer" aria-hidden="true"></div>
   <div class="wallpaper-shade" aria-hidden="true"></div>
-  <div class="app-shell">
+  <section id="authGate" class="auth-gate">
+    <div class="auth-card glass-card">
+      <div class="auth-mascots">🐼 ♡ 🧸</div>
+      <p class="eyebrow">BUBU & DUDU · SHARED FINANCE</p>
+      <h1>Keuangan kita, satu tempat.</h1>
+      <p class="section-subtitle">Masuk dengan akun yang sudah dibuat untuk kalian. Pemasukan, pengeluaran, dan budget akan tersinkron ke perangkat lain.</p>
+      <form id="loginForm" class="auth-form">
+        <label class="field-label" for="loginEmail">Email akun</label>
+        <input id="loginEmail" type="email" autocomplete="username" required placeholder="email kamu">
+        <label class="field-label" for="loginPassword">Kata sandi</label>
+        <input id="loginPassword" type="password" autocomplete="current-password" required placeholder="Kata sandi" minlength="6">
+        <button class="button button-primary" id="loginButton" type="submit">Masuk ke keuangan bersama</button>
+      </form>
+      <p id="authMessage" class="form-hint" role="status">Akun dibuat terlebih dahulu oleh pemilik proyek di Supabase. Pendaftaran publik tidak digunakan.</p>
+    </div>
+  </section>
+  <div class="app-shell" id="appShell" style="display:none">
     <header class="topbar">
       <a class="brand" href="#" aria-label="Bubu dan Dudu, beranda">
         <span class="brand-mark" aria-hidden="true">🐼</span>
         <span><strong>Bubu <i>&</i> Dudu</strong><small>little steps, big savings</small></span>
       </a>
-      <button class="icon-button" id="openWallpaper" type="button" aria-label="Pengaturan wallpaper" title="Pengaturan tampilan">🎨</button>
+      <div class="topbar-actions"><span id="syncStatus" class="sync-status">Belum tersambung</span><button class="icon-button" id="logoutButton" type="button" title="Keluar" aria-label="Keluar">↪</button><button class="icon-button" id="openWallpaper" type="button" aria-label="Pengaturan wallpaper" title="Pengaturan tampilan">🎨</button></div>
     </header>
 
     <main>
@@ -72,7 +90,7 @@
             <label class="field-label" for="note">Catatan <span class="optional">(opsional)</span></label>
             <input id="note" name="note" type="text" maxlength="120" placeholder="Contoh: gaji, kopi, groceries...">
             <div class="form-actions"><button class="button button-primary" id="saveTransaction" type="submit">♡ Simpan transaksi</button><button class="button button-quiet hidden" id="cancelEdit" type="button">Batal</button></div>
-            <p class="form-hint">Data tersimpan di perangkat ini, bukan di server.</p>
+            <p class="form-hint">Data disimpan bersama di cloud dan disinkronkan ke perangkat yang masuk dengan akun kalian.</p>
           </form>
         </section>
 

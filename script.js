@@ -26,6 +26,7 @@
   let budgets = { ...defaultBudgets, ...readStorage(STORAGE.budgets, {}) };
   let wallpaper = { preset:"peach", image:"", blur:8, overlay:15, ...readStorage(STORAGE.wallpaper, {}) };
   let expenseChart = null, monthlyChart = null, toastTimer = null;
+  let supabaseClient = null, currentUser = null, realtimeChannel = null, syncTimer = null, applyingRemote = false;
   const today = new Date();
   const dateString = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
   const currentMonth = () => `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}`;
@@ -33,8 +34,97 @@
   const safe = value => String(value ?? "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
   function readStorage(key, fallback) { try { const value = localStorage.getItem(key); return value ? JSON.parse(value) : fallback; } catch (e) { return fallback; } }
   function writeStorage(key, value) {
-    try { localStorage.setItem(key, JSON.stringify(value)); return true; }
+    try { localStorage.setItem(key, JSON.stringify(value)); }
     catch (e) { showToast("Penyimpanan perangkat penuh. Hapus gambar wallpaper atau beberapa data lalu coba lagi."); return false; }
+    if (!applyingRemote && (key === STORAGE.transactions || key === STORAGE.budgets)) scheduleCloudSync();
+    return true;
+  }
+  function setSyncStatus(message, state = "") {
+    const el = $("syncStatus"); if (!el) return;
+    el.textContent = message; el.dataset.state = state;
+  }
+  function setAuthMessage(message) { const el = $("authMessage"); if (el) el.textContent = message; }
+  function scheduleCloudSync() {
+    if (!supabaseClient || !currentUser || applyingRemote) return;
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(async () => {
+      setSyncStatus("Menyimpan…", "busy");
+      const payload = { id: "shared", transactions, budgets, updated_at: new Date().toISOString(), updated_by: currentUser.id };
+      const { error } = await supabaseClient.from("shared_finance").upsert(payload, { onConflict: "id" });
+      if (error) { console.error(error); setSyncStatus("Gagal menyinkronkan", "error"); showToast("Data lokal tersimpan, tetapi sinkronisasi gagal. Periksa koneksi dan konfigurasi Supabase."); }
+      else setSyncStatus("Tersinkron", "ok");
+    }, 350);
+  }
+  async function applyCloudData(data) {
+    if (!data) return;
+    applyingRemote = true;
+    transactions = Array.isArray(data.transactions) ? data.transactions : [];
+    budgets = { ...defaultBudgets, ...(data.budgets || {}) };
+    try {
+      localStorage.setItem(STORAGE.transactions, JSON.stringify(transactions));
+      localStorage.setItem(STORAGE.budgets, JSON.stringify(budgets));
+    } catch (_) {}
+    renderAll();
+    applyingRemote = false;
+    setSyncStatus("Tersinkron", "ok");
+  }
+  async function loadSharedData() {
+    setSyncStatus("Mengambil data…", "busy");
+    const { data, error } = await supabaseClient.from("shared_finance").select("id,transactions,budgets,updated_at").eq("id", "shared").maybeSingle();
+    if (error) throw error;
+    if (data) await applyCloudData(data);
+    else {
+      // Seed a new shared workspace with this device's existing local records.
+      const initial = { id: "shared", transactions, budgets, updated_at: new Date().toISOString(), updated_by: currentUser.id };
+      const { error: insertError } = await supabaseClient.from("shared_finance").insert(initial);
+      if (insertError && insertError.code !== "23505") throw insertError;
+      if (insertError?.code === "23505") {
+        const retry = await supabaseClient.from("shared_finance").select("id,transactions,budgets,updated_at").eq("id", "shared").single();
+        if (retry.error) throw retry.error;
+        await applyCloudData(retry.data);
+      }
+    }
+    if (realtimeChannel) await supabaseClient.removeChannel(realtimeChannel);
+    realtimeChannel = supabaseClient.channel("shared-finance-live")
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "shared_finance", filter: "id=eq.shared" }, async (event) => {
+        if (event.new && event.new.updated_by !== currentUser?.id) {
+          await applyCloudData(event.new);
+          showToast("Data keuangan diperbarui dari perangkat lain.");
+        }
+      })
+      .subscribe((status) => { if (status === "SUBSCRIBED") setSyncStatus("Online · tersinkron", "ok"); });
+  }
+  async function showSignedInApp(user) {
+    currentUser = user;
+    $("authGate").style.display = "none";
+    $("appShell").style.display = "";
+    try { await loadSharedData(); }
+    catch (error) {
+      console.error(error); setSyncStatus("Sinkronisasi gagal", "error");
+      showToast("Tidak bisa memuat data bersama. Periksa file config.js, SQL, dan izin Supabase.");
+    }
+  }
+  async function initAuth() {
+    const config = window.BUBU_DUDU_CONFIG || {};
+    if (!window.supabase || !config.url || !config.anonKey || config.url.includes("GANTI_URL") || config.anonKey.includes("GANTI_KEY")) {
+      setAuthMessage("Supabase belum dikonfigurasi. Isi URL dan publishable/anon key di file config.js terlebih dahulu.");
+      return;
+    }
+    supabaseClient = window.supabase.createClient(config.url, config.anonKey);
+    $("loginForm").addEventListener("submit", async (event) => {
+      event.preventDefault(); const button = $("loginButton"); button.disabled = true; button.textContent = "Memeriksa akun…";
+      const { data, error } = await supabaseClient.auth.signInWithPassword({ email: $("loginEmail").value.trim(), password: $("loginPassword").value });
+      button.disabled = false; button.textContent = "Masuk ke keuangan bersama";
+      if (error) { setAuthMessage("Login gagal: " + error.message); return; }
+      setAuthMessage("Login berhasil. Memuat data bersama…"); await showSignedInApp(data.user);
+    });
+    $("logoutButton").addEventListener("click", async () => {
+      if (realtimeChannel) { await supabaseClient.removeChannel(realtimeChannel); realtimeChannel = null; }
+      await supabaseClient.auth.signOut(); currentUser = null; $("appShell").style.display = "none"; $("authGate").style.display = "grid"; setSyncStatus("Keluar", "");
+    });
+    const { data, error } = await supabaseClient.auth.getSession();
+    if (error) setAuthMessage("Tidak bisa memeriksa sesi: " + error.message);
+    else if (data.session) await showSignedInApp(data.session.user);
   }
   function showToast(message) {
     const toast = $("toast"); toast.textContent = message; toast.classList.add("show");
@@ -72,6 +162,7 @@
     $("mascotButton").addEventListener("click", () => showToast("Bubu bilang: satu langkah kecil tetap berarti! Dudu setuju! ♡"));
     fillFilterCategories(); applyWallpaper(); renderAll();
     window.addEventListener("resize", debounce(renderCharts, 120));
+    initAuth();
   }
   function saveTransaction(event) {
     event.preventDefault();
