@@ -1,0 +1,60 @@
+BUBU & DUDU FINANCE — PETUNJUK PEMASANGAN
+========================================
+
+PENTING
+- Jangan hapus public.shared_finance. Data lama tetap dipertahankan.
+- Aplikasi membaca data lama dari shared_finance dan menyimpan catatan baru ke shared_finance_entries.
+- Jangan pernah menaruh service_role key di index.html. File ini memakai publishable key.
+- Login username pada halaman dipetakan ke email internal Supabase. Akun harus dibuat administrator terlebih dahulu.
+
+ALIAS LOGIN INTERNAL
+Bubu         bubu@bubududu.example.com
+Dudu         dudu@bubududu.example.com
+Perangkat 3  perangkat3@bubududu.example.com
+
+LANGKAH 1 — BUAT TIGA AKUN SUPABASE
+1. Buka Supabase Dashboard proyek eczyeoalolxajambabff.
+2. Buka Authentication > Users.
+3. Tambahkan tiga user dengan email alias di atas dan kata sandi kuat yang berbeda.
+4. Jika tersedia, tandai email sebagai confirmed.
+5. Catat User UID (UUID) dari setiap akun. Jangan bagikan kata sandi.
+
+Alias example.com hanya digunakan sebagai identitas login internal, bukan untuk menerima email. Buat akun melalui Dashboard; jangan aktifkan pendaftaran publik untuk aplikasi privat ini.
+
+LANGKAH 2 — IZINKAN UID AKUN
+Di SQL Editor, ganti semua placeholder dengan UUID baru dari Authentication > Users, kemudian jalankan:
+
+INSERT INTO private.user_device_allowlist (user_id, device_label, approved)
+VALUES
+  ('GANTI_UID_BUBU', 'Bubu', true),
+  ('GANTI_UID_DUDU', 'Dudu', true),
+  ('GANTI_UID_PERANGKAT3', 'Perangkat 3', true)
+ON CONFLICT (user_id) DO UPDATE
+SET device_label = EXCLUDED.device_label, approved = true, approved_at = now();
+
+Pastikan placeholder diganti UUID asli sebelum menjalankan query. Jangan menghapus UID lama dari allowlist jika masih diperlukan aplikasi lama.
+
+LANGKAH 3 — TABEL DAN KEBIJAKAN
+Aplikasi mengharapkan public.shared_finance_entries mempunyai RLS serta policy SELECT dan INSERT untuk perangkat yang disetujui. Jangan buat policy UPDATE atau DELETE. Berdasarkan setup sebelumnya, tabel dan policy dasar sudah dibuat.
+Data lama public.shared_finance hanya dibaca oleh aplikasi; jangan menghapus atau menggantinya.
+
+LANGKAH 4 — UNGGAH KE GITHUB PAGES
+1. Ekstrak ZIP ini.
+2. Buka repositori GitHub untuk Bubu & Dudu Finance.
+3. Unggah index.html, manifest.webmanifest, dan sw.js ke folder utama.
+4. Commit changes, lalu tunggu GitHub Pages selesai deploy.
+5. Buka alamat GitHub Pages, pilih nama perangkat, lalu masukkan kata sandi akun.
+
+LANGKAH 5 — UJI COBA
+1. Masuk sebagai Bubu dan simpan satu catatan uji.
+2. Masuk sebagai Dudu di perangkat lain, tekan Muat ulang, dan pastikan catatan Bubu terlihat.
+3. Uji akun Perangkat 3.
+4. Pastikan catatan lama masih ada. Jika sebagian catatan lama tidak tampil, jangan hapus apa pun; struktur JSON lama mungkin perlu disesuaikan.
+
+BATASAN VERSI AWAL
+- Tidak ada tombol edit/hapus catatan.
+- Catatan baru disimpan di shared_finance_entries; data lama tetap berada di shared_finance.
+- Catatan lama hanya dapat dihitung jika field JSON jenis dan nominal cocok dengan format umum yang dikenali. Catatan lama yang tidak dikenali tetap aman di tabel lama.
+- Anggaran lama ditampilkan sederhana; fitur mengubah anggaran belum tersedia.
+- Sinkronisasi tidak real-time otomatis; tekan Muat ulang untuk mengambil perubahan terbaru.
+- Uji dengan akun dan nominal contoh terlebih dahulu sebelum dipakai untuk pencatatan penting.
