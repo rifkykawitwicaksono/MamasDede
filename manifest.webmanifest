@@ -1,4 +1,5 @@
 {
+  "id": "./",
   "name": "Bubu & Dudu Finance",
   "short_name": "BubuDudu",
   "description": "Catatan keuangan bersama dengan kategori yang bisa disesuaikan",
@@ -8,5 +9,13 @@
   "background_color": "#fff7f8",
   "theme_color": "#f5a9b8",
   "orientation": "portrait-primary",
-  "categories": ["finance", "lifestyle", "utilities"]
+  "categories": ["finance", "lifestyle", "utilities"],
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
 }
