@@ -1,0 +1,10 @@
+{
+  "name": "Bubu & Dudu Finance",
+  "short_name": "BubuDudu",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f3f6fb",
+  "theme_color": "#172554",
+  "description": "Catatan keuangan bersama Bubu, Dudu, dan Perangkat 3",
+  "icons": []
+}
