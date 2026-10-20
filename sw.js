@@ -1,5 +1,5 @@
-const CACHE_NAME = "bubu-dudu-finance-pwa-starter-v3";
-const FILES = ["./", "./index.html", "./manifest.webmanifest"];
+const CACHE_NAME = "bubu-dudu-finance-pwa-starter-v4";
+const FILES = ["./", "./index.html", "./manifest.webmanifest", "./icon.svg"];
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(FILES)).catch(() => {}));
   self.skipWaiting();
